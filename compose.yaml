@@ -1,0 +1,7 @@
+services:
+  db: #use docker debug in terminal to get a docker console inside the container
+    image: postgres:latest
+    environment:
+      POSTGRES_PASSWORD: example
+    ports:
+      - "5433:5432"
