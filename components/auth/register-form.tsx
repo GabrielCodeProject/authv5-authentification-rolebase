@@ -4,7 +4,6 @@ import { useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -14,19 +13,52 @@ import CardWrapper from "./card-wrapper";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { RegisterSchema } from "@/schemas";
 import { Input } from "@/components/ui/input";
-import { set, z } from "zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { FormSuccess } from "./form-success";
 import { FormError } from "./form-error";
 import { register } from "@/actions/register";
 import GoogleLogin from "./google-button";
+import { useRouter } from "next/navigation";
+import FormfieldCustom from "../formfield-custom";
 
 export const RegisterForm = () => {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  const fields = [
+    {
+      id: 1,
+      name: "email",
+      label: "Email",
+      placeholder: "example@gmail.com",
+      inputType: "email",
+    },
+    {
+      id: 2,
+      name: "name",
+      label: "Name",
+      placeholder: "John Doe",
+      inputType: "text",
+    },
+    {
+      id: 3,
+      name: "password",
+      label: "Password",
+      placeholder: "******",
+      inputType: "password",
+    },
+    {
+      id: 4,
+      name: "passwordConfirmation",
+      label: "Confirm Password",
+      placeholder: "******",
+      inputType: "password",
+    },
+  ];
   const form = useForm<z.infer<typeof RegisterSchema>>({
     resolver: zodResolver(RegisterSchema),
     defaultValues: {
@@ -49,6 +81,7 @@ export const RegisterForm = () => {
         setLoading(false);
         setSuccess(res.success);
         setError("");
+        router.push("/auth/login");
       }
       setLoading(false);
     });
@@ -65,62 +98,16 @@ export const RegisterForm = () => {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <div className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="johndoe@email.com"
-                      type="email"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="John Doe" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="******" type="password" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="passwordConfirmation"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="******" type="password" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {fields.map((field) => (
+              <FormfieldCustom
+                key={field.id}
+                control={form.control}
+                name={field.name}
+                label={field.label}
+                placeholder={field.placeholder}
+                inputType={field.inputType}
+              />
+            ))}
           </div>
           <FormSuccess message={success} />
           <FormError message={error} />
