@@ -42,6 +42,14 @@ model Account {
   @@id([provider, providerAccountId])
 }
 
+model VerificationToken {
+  email   String
+  token   String
+  expires DateTime
+
+  @@id([email, token])
+}
+
 enum EnumRole {
   USER
   ADMIN

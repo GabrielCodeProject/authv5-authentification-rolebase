@@ -4,6 +4,7 @@ import prisma from "../lib/prisma";
 import bcrypt from "bcryptjs";
 import { RegisterSchema } from "@/schemas";
 import { EnumRole } from "@prisma/client";
+import { generateVerificationToken } from "@/lib/token";
 
 export const register = async (data: z.infer<typeof RegisterSchema>) => {
   try {
@@ -39,6 +40,10 @@ export const register = async (data: z.infer<typeof RegisterSchema>) => {
         role: EnumRole.USER,
       },
     });
+
+    //generate a verification token
+    const verificationToken = await generateVerificationToken(email);
+
     return {
       user: {
         id: user.id,
