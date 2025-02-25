@@ -3,6 +3,7 @@ import * as z from "zod";
 import prisma from "../lib/prisma";
 import bcrypt from "bcryptjs";
 import { RegisterSchema } from "@/schemas";
+import { EnumRole } from "@prisma/client";
 
 export const register = async (data: z.infer<typeof RegisterSchema>) => {
   try {
@@ -35,6 +36,7 @@ export const register = async (data: z.infer<typeof RegisterSchema>) => {
         password: hashedPassword,
         /* TODO: add email verification service */
         emailVerified: new Date(),
+        role: EnumRole.USER,
       },
     });
     return {
@@ -42,6 +44,7 @@ export const register = async (data: z.infer<typeof RegisterSchema>) => {
         id: user.id,
         email: user.email,
         name: user.name,
+        role: user.role,
       },
       success: "user created with success",
     };

@@ -49,10 +49,10 @@ export const {
       token.name = existingUser.name;
       token.email = existingUser.email;
       token.image = existingUser.image;
+      token.role = existingUser.role;
       return token;
     },
     async session({ token, session }) {
-      console.log("session token", token);
       console.log("session object", session);
 
       return {
@@ -61,6 +61,7 @@ export const {
           ...session.user,
           id: token.sub,
           isOauth: token.isOauth,
+          role: token.role,
         },
       };
     },
