@@ -1,18 +1,10 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Path, useForm } from "react-hook-form";
+import { Form } from "@/components/ui/form";
 import CardWrapper from "./card-wrapper";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { RegisterSchema } from "@/schemas";
-import { Input } from "@/components/ui/input";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -29,7 +21,15 @@ export const RegisterForm = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const fields = [
+  interface FieldDefinition {
+    id: number;
+    name: Path<z.infer<typeof RegisterSchema>>;
+    label: string;
+    placeholder: string;
+    inputType: string;
+  }
+
+  const fields: FieldDefinition[] = [
     {
       id: 1,
       name: "email",

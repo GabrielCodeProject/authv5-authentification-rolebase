@@ -33,6 +33,8 @@ export const register = async (data: z.infer<typeof RegisterSchema>) => {
         email: lowerCaseEmail,
         name,
         password: hashedPassword,
+        /* TODO: add email verification service */
+        emailVerified: new Date(),
       },
     });
     return {
