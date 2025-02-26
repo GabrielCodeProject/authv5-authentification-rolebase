@@ -20,17 +20,18 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Learn More
+## usefull documentation used or knowledge learned
 
-To learn more about Next.js, take a look at the following resources:
+server action vs api route
+https://www.youtube.com/watch?v=RadgkoJrhu0
+https://www.youtube.com/watch?v=kIhdI9Fsp-w
+server action use to mutation and not recommanded pour faire des query de donner (data fetching)
+car elle sont queued (process une actions a la fois)
+donc si tu appel 3 fois fetchRandomNumber qui est la meme fonction
+il va avoir un delais entre chaque appel car il attend la reponse de la derniere appel avant dexecuter la prochaine
+designed for mutation only
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+api route elle va etre tous appeler en meme temps et avoir la reponse directement
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+other userfull tutoriel use to create this auth project part 1 to 4
+https://www.youtube.com/watch?v=5a9yo09W4rQ

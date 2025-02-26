@@ -7,6 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum EnumRole {
+  USER
+  ADMIN
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -14,7 +19,7 @@ model User {
   emailVerified DateTime?
   password      String?
   image         String?
-  role          EnumRole?
+  role          EnumRole? @default(USER)
   accounts      Account[]
 
   createdAt DateTime @default(now())
@@ -48,9 +53,4 @@ model VerificationToken {
   expires DateTime
 
   @@id([email, token])
-}
-
-enum EnumRole {
-  USER
-  ADMIN
 }
