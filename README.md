@@ -35,3 +35,6 @@ api route elle va etre tous appeler en meme temps et avoir la reponse directemen
 
 other userfull tutoriel use to create this auth project part 1 to 4
 https://www.youtube.com/watch?v=5a9yo09W4rQ
+
+email verification with resend
+https://www.youtube.com/watch?v=QyGJLm55EDk

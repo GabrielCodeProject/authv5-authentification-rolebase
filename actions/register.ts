@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { RegisterSchema } from "@/schemas";
 import { EnumRole } from "@prisma/client";
 import { generateVerificationToken } from "@/lib/token";
+import { sendVerificationEmail } from "@/lib/mail";
 
 export const register = async (data: z.infer<typeof RegisterSchema>) => {
   try {
@@ -36,7 +37,7 @@ export const register = async (data: z.infer<typeof RegisterSchema>) => {
         name,
         password: hashedPassword,
         /* TODO: add email verification service */
-        emailVerified: new Date(),
+        //emailVerified: new Date(),
         role: EnumRole.USER,
       },
     });
@@ -44,6 +45,7 @@ export const register = async (data: z.infer<typeof RegisterSchema>) => {
     //generate a verification token
     const verificationToken = await generateVerificationToken(email);
 
+    await sendVerificationEmail(email, verificationToken.token);
     return {
       user: {
         id: user.id,

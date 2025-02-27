@@ -12,3 +12,16 @@ export const getVerificationTokenByEmail = async (email: string) => {
     console.log("Error getting verification token: ", error);
   }
 };
+export const getVerificationTokenByToken = async (token: string) => {
+  try {
+    const verificationToken = await prisma.verificationToken.findFirst({
+      where: {
+        token: token,
+      },
+    });
+
+    return verificationToken;
+  } catch (error) {
+    console.log(error);
+  }
+};
