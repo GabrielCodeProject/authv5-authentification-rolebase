@@ -8,17 +8,17 @@ export const newVerification = async (token: string) => {
   const existingToken = await getVerificationTokenByToken(token);
 
   if (!existingToken) {
-    return { error: "invalid token" };
+    return { error: "Invalid token" };
   }
   const hasExpired = new Date(existingToken.expires) < new Date();
   if (hasExpired) {
-    return { error: "token has expired" };
+    return { error: "Token has expired" };
   }
 
   const existingUser = await getUserByEmail(existingToken.email);
 
   if (!existingUser) {
-    return { error: "user not found" };
+    return { error: "User not found" };
   }
 
   await prisma.user.update({

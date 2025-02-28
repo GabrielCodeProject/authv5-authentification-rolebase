@@ -30,14 +30,13 @@ export const register = async (data: z.infer<typeof RegisterSchema>) => {
     if (userExists) {
       return { error: "User already exists" };
     }
+
     const lowerCaseEmail = email.toLowerCase();
     const user = await prisma.user.create({
       data: {
         email: lowerCaseEmail,
         name,
         password: hashedPassword,
-        /* TODO: add email verification service */
-        //emailVerified: new Date(),
         role: EnumRole.USER,
       },
     });
@@ -46,6 +45,7 @@ export const register = async (data: z.infer<typeof RegisterSchema>) => {
     const verificationToken = await generateVerificationToken(email);
 
     await sendVerificationEmail(email, verificationToken.token);
+
     return {
       user: {
         id: user.id,
@@ -57,7 +57,6 @@ export const register = async (data: z.infer<typeof RegisterSchema>) => {
     };
   } catch (error) {
     console.error("Error registering user: ", error);
-    //throw new Error("Error registering user");
     return { error: "Error registering user" };
   }
 };
