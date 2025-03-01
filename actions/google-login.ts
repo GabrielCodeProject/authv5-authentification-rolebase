@@ -8,7 +8,14 @@ export async function googleAuthenticate() {
     await signIn("google");
   } catch (error) {
     if (error instanceof AuthError) {
-      return "Google log in failed";
+      switch (error.type) {
+        case "OAuthAccountNotLinked": {
+          return { error: "Account not linked youre fuck from google login" };
+        }
+        default: {
+          return { error: "Google log in failed" };
+        }
+      }
     }
     throw error;
   }

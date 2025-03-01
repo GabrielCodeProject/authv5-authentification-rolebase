@@ -4,7 +4,6 @@ import prisma from "@/lib/prisma";
 import authConfig from "./auth.config";
 import { getUserById } from "@/data/user";
 import { getAccountByUserId } from "@/data/account";
-import { EnumRole } from "@prisma/client";
 
 export const {
   auth,
@@ -17,16 +16,9 @@ export const {
   ...authConfig,
   callbacks: {
     async signIn({ user, account }) {
-      if(account?.provider === "google"){
+      if (account?.provider === "google") {
         console.log("google account", account);
-        if (!user.role) {
-          // Optionally update the user in the database
-          await prisma.user.update({
-            where: { email: user.email },
-            data: { role: EnumRole.USER },
-          });
-          user.role = EnumRole.USER;
-        }
+
         return true;
       }
       if (account?.provider !== "credentials") {
@@ -78,5 +70,9 @@ export const {
         },
       };
     },
+  },
+  pages: {
+    signIn: "/auth/login",
+    //error: "/auth/error",
   },
 });

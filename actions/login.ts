@@ -37,6 +37,11 @@ export const login = async (data: z.infer<typeof LoginSchema>) => {
         case "CredentialsSignin": {
           return { error: "Invalid credentials" };
         }
+        case "OAuthAccountNotLinked": {
+          return {
+            error: "Account not linked youre fuck from credential login",
+          };
+        }
         default: {
           return { error: "Please confirm your email" };
         }

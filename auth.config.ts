@@ -1,5 +1,5 @@
 import Credentials from "next-auth/providers/credentials";
-import Google from "next-auth/providers/google";
+import Google, { GoogleProfile } from "next-auth/providers/google";
 
 import type { NextAuthConfig } from "next-auth";
 import { LoginSchema } from "./schemas";
@@ -9,6 +9,16 @@ import bcrypt from "bcryptjs";
 export default {
   providers: [
     Google({
+      profile: (profile: GoogleProfile) => ({
+        id: profile.sub, // Ensure the 'id' (sub) is returned
+        firstName: profile.given_name,
+        lastName: profile.family_name,
+        email: profile.email,
+        image: profile.picture,
+        username:
+          `${profile.given_name}${profile.family_name}`.toLowerCase() ??
+          "unknown",
+      }),
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     }),
