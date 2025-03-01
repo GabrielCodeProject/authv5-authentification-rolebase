@@ -8,10 +8,10 @@ import { Button } from "../ui/button";
 import { useState } from "react";
 import { FormError } from "./form-error";
 import { login } from "@/actions/login";
-import { Link } from "lucide-react";
 import { Path, useForm } from "react-hook-form";
 import GoogleLogin from "./google-button";
 import FormfieldCustom from "../formfield-custom";
+import Link from "next/link";
 
 const LoginForm = () => {
   const [loading, setLoading] = useState(false);
