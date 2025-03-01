@@ -14,10 +14,9 @@ export default {
     }),
     Credentials({
       async authorize(credentials) {
-        debugger;
-        console.log("credential receive in authorize function: ", credentials);
         const validatedData = LoginSchema.safeParse(credentials);
         console.log("validated data:", validatedData);
+
         if (!validatedData.success) {
           return null;
         }

@@ -1,4 +1,4 @@
-import prisma from "../lib/prisma";
+import prisma from "@/lib/prisma";
 
 export const getUserByEmail = async (email: string) => {
   try {
@@ -11,7 +11,7 @@ export const getUserByEmail = async (email: string) => {
 
     return user;
   } catch (error) {
-    console.log(error);
+    console.error(error);
     return null;
   }
 };
@@ -25,7 +25,7 @@ export const getUserById = async (id: string) => {
     });
     return user;
   } catch (error) {
-    console.log(error);
+    console.error(error);
     return null;
   }
 };

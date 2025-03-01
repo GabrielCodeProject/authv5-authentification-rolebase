@@ -7,11 +7,9 @@ import { AuthError } from "next-auth";
 import prisma from "@/lib/prisma";
 
 export const login = async (data: z.infer<typeof LoginSchema>) => {
-  console.log("login action data receive before parse:", data);
-
   const validatedData = LoginSchema.parse(data);
   console.log("validated data: ", validatedData);
-  debugger;
+
   if (!validatedData) {
     return { error: "Invalid input data" };
   }
@@ -27,7 +25,6 @@ export const login = async (data: z.infer<typeof LoginSchema>) => {
     return { error: "User not found" };
   }
 
-  console.log("user fetch from prisma data: ", userExists);
   try {
     await signIn("credentials", {
       email: userExists.email,

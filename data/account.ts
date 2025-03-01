@@ -1,4 +1,4 @@
-import prisma from "../lib/prisma";
+import prisma from "@/lib/prisma";
 
 // utiliser pour fetch les donners lorsque le user est connecter par un provider autre que le credential
 // google provider account
