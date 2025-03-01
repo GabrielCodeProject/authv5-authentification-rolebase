@@ -46,6 +46,7 @@ export default {
         await bcrypt.compare(password, userExists.password).then((res) => {
           console.log("Comparison result:", res);
           if (!res) {
+            throw new Error("Invalid password");
             return null;
           }
         });

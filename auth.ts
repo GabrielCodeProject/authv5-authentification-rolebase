@@ -16,25 +16,34 @@ export const {
   ...authConfig,
   callbacks: {
     async signIn({ user, account }) {
+      // Allow Google login flow
       if (account?.provider === "google") {
-        console.log("google account", account);
+        const existingUser = await prisma.user.findUnique({
+          where: { email: user.email! },
+          include: { accounts: true },
+        });
+
+        // If user exists but doesn't have Google account linked
+        if (existingUser) {
+          const hasGoogleAccount = existingUser.accounts.some(
+            (a) => a.provider === "google"
+          );
+          if (!hasGoogleAccount) {
+            throw new Error("OAuthAccountNotLinked"); // Use exact error type
+          }
+        }
 
         return true;
       }
-      if (account?.provider !== "credentials") {
-        return true;
+
+      // Handle credentials login
+      if (account?.provider === "credentials") {
+        if (!user.id) return false;
+        const existingUser = await getUserById(user.id);
+        return !!existingUser?.emailVerified;
       }
 
-      if (!user.id) {
-        return false;
-      }
-      const existingUser = await getUserById(user.id);
-
-      if (!existingUser?.emailVerified) {
-        return false;
-      }
-
-      return true;
+      return false;
     },
     async jwt({ token }) {
       console.log("jwt", token);
@@ -73,6 +82,14 @@ export const {
   },
   pages: {
     signIn: "/auth/login",
-    //error: "/auth/error",
+    error: "/auth/error",
+  },
+  events: {
+    async linkAccount({ user, account }) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { emailVerified: new Date() },
+      });
+    },
   },
 });

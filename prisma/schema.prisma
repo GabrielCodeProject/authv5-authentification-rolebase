@@ -27,7 +27,7 @@ model User {
 }
 
 model Account {
-  userId            String
+  userId            String  @map("user_id")
   type              String
   provider          String
   providerAccountId String

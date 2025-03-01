@@ -31,23 +31,20 @@ export const login = async (data: z.infer<typeof LoginSchema>) => {
       password,
       redirectTo: "/dashboard",
     });
+    return { success: "/dashboard" };
   } catch (error) {
     if (error instanceof AuthError) {
       switch (error.type) {
         case "CredentialsSignin": {
           return { error: "Invalid credentials" };
         }
-        case "OAuthAccountNotLinked": {
-          return {
-            error: "Account not linked youre fuck from credential login",
-          };
-        }
+        case "OAuthAccountNotLinked":
+          return { redirect: "/auth/link-account" };
         default: {
-          return { error: "Please confirm your email" };
+          return { error: "Invalid password" };
         }
       }
     }
     throw error;
   }
-  return { success: "User logged in successfully" };
 };

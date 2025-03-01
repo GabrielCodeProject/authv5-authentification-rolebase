@@ -10,7 +10,7 @@ export async function googleAuthenticate() {
     if (error instanceof AuthError) {
       switch (error.type) {
         case "OAuthAccountNotLinked": {
-          return { error: "Account not linked youre fuck from google login" };
+          return { error: "Account needs linking" };
         }
         default: {
           return { error: "Google log in failed" };
