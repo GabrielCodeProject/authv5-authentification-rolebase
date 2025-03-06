@@ -25,26 +25,40 @@ export const login = async (data: z.infer<typeof LoginSchema>) => {
     return { error: "User not found" };
   }
 
+  // Check email verification before attempting sign in
+  if (!userExists.emailVerified) {
+    return { error: "Please verify your email before logging in" };
+  }
+
   try {
-    await signIn("credentials", {
+    const result = await signIn("credentials", {
       email: userExists.email,
       password,
-      redirectTo: "/dashboard",
+      redirect: false,
     });
-    return { success: "/dashboard" };
+
+    console.log("Sign in result:", result);
+
+    if (result?.error) {
+      return { error: "Invalid email or password" };
+    }
+
+    // If sign in is successful, return success with redirect path
+    return { success: true, redirect: "/dashboard" };
   } catch (error) {
+    console.error("Sign in error:", error);
+
     if (error instanceof AuthError) {
       switch (error.type) {
-        case "CredentialsSignin": {
-          return { error: "Invalid credentials" };
-        }
         case "OAuthAccountNotLinked":
           return { redirect: "/auth/link-account" };
-        default: {
-          return { error: "Invalid password" };
-        }
+        case "CredentialsSignin":
+          return { error: "Invalid email or password" };
+        default:
+          return { error: "An error occurred during sign in" };
       }
     }
-    throw error;
+
+    return { error: "Something went wrong. Please try again." };
   }
 };

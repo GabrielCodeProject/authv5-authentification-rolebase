@@ -24,34 +24,43 @@ export default {
     }),
     Credentials({
       async authorize(credentials) {
-        const validatedData = LoginSchema.safeParse(credentials);
-        console.log("validated data:", validatedData);
+        try {
+          const validatedData = LoginSchema.safeParse(credentials);
+          console.log("validated data:", validatedData);
 
-        if (!validatedData.success) {
-          return null;
-        }
-        const { email, password } = validatedData.data;
-
-        const userExists = await prisma.user.findFirst({
-          where: {
-            email: email,
-          },
-        });
-
-        console.log("auth user fetch", userExists);
-        if (!userExists || !userExists.password || !userExists.email) {
-          return null;
-        }
-
-        await bcrypt.compare(password, userExists.password).then((res) => {
-          console.log("Comparison result:", res);
-          if (!res) {
-            throw new Error("Invalid password");
+          if (!validatedData.success) {
             return null;
           }
-        });
+          const { email, password } = validatedData.data;
 
-        return userExists;
+          const userExists = await prisma.user.findFirst({
+            where: {
+              email: email,
+            },
+          });
+
+          console.log("auth user fetch", userExists);
+          if (!userExists || !userExists.password || !userExists.email) {
+            return null;
+          }
+
+          if (!userExists.emailVerified) {
+            return null;
+          }
+
+          const isValidPassword = await bcrypt.compare(
+            password,
+            userExists.password
+          );
+          if (!isValidPassword) {
+            return null;
+          }
+
+          return userExists;
+        } catch (error) {
+          console.error("Authorization error:", error);
+          return null;
+        }
       },
     }),
   ],

@@ -12,8 +12,10 @@ import { Path, useForm } from "react-hook-form";
 import GoogleLogin from "./google-button";
 import FormfieldCustom from "../formfield-custom";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const LoginForm = () => {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -51,17 +53,24 @@ const LoginForm = () => {
   });
 
   const onSubmit = async (data: z.infer<typeof LoginSchema>) => {
-    setLoading(true);
-    login(data).then((res) => {
-      if (res?.error) {
-        setError(res.error);
-        setLoading(false);
-      } else {
-        setError("");
-        setLoading(false);
+    try {
+      setLoading(true);
+      setError("");
+
+      const result = await login(data);
+
+      if (result?.error) {
+        setError(result.error);
+      } else if (result?.success && result?.redirect) {
+        router.push(result.redirect);
       }
-    });
+    } catch {
+      setError("An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
   };
+
   return (
     <CardWrapper
       headerLabel="Log in to your account"
@@ -93,7 +102,7 @@ const LoginForm = () => {
             </Button>
           </div>
           <FormError message={error} />
-          <Button type="submit" className="w-full">
+          <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Loading..." : "Login"}
           </Button>
         </form>
@@ -102,4 +111,5 @@ const LoginForm = () => {
     </CardWrapper>
   );
 };
+
 export default LoginForm;
