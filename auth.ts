@@ -20,16 +20,44 @@ export const {
       if (account?.provider === "google") {
         const existingUser = await prisma.user.findUnique({
           where: { email: user.email! },
-          include: { accounts: true },
         });
 
         // If user exists but doesn't have Google account linked
         if (existingUser) {
-          const hasGoogleAccount = existingUser.accounts.some(
-            (a) => a.provider === "google"
-          );
-          if (!hasGoogleAccount) {
-            throw new Error("OAuthAccountNotLinked"); // Use exact error type
+          // Check if user already has a Google account
+          const existingGoogleAccount = await prisma.account.findFirst({
+            where: {
+              userId: existingUser.id,
+              provider: "google",
+            },
+          });
+
+          if (!existingGoogleAccount) {
+            // Link the Google account to the existing user
+            await prisma.account.create({
+              data: {
+                userId: existingUser.id,
+                type: account.type!,
+                provider: account.provider,
+                providerAccountId: account.providerAccountId!,
+                access_token: account.access_token?.toString(),
+                expires_at: account.expires_at,
+                token_type: account.token_type?.toString(),
+                scope: account.scope?.toString(),
+                id_token: account.id_token?.toString(),
+                session_state: account.session_state?.toString(),
+              },
+            });
+
+            // Update user information with Google data if needed
+            await prisma.user.update({
+              where: { id: existingUser.id },
+              data: {
+                image: user.image || existingUser.image,
+                name: user.name || existingUser.name,
+                emailVerified: new Date(),
+              },
+            });
           }
         }
 
@@ -85,7 +113,7 @@ export const {
     error: "/auth/error",
   },
   events: {
-    async linkAccount({ user, account }) {
+    async linkAccount({ user }) {
       await prisma.user.update({
         where: { id: user.id },
         data: { emailVerified: new Date() },
