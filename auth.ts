@@ -13,52 +13,28 @@ export const {
 } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
+  pages: {
+    signIn: "/auth/login",
+    error: "/auth/error",
+  },
   ...authConfig,
   callbacks: {
     async signIn({ user, account }) {
-      // Allow Google login flow
+      // Allow OAuth providers
       if (account?.provider === "google") {
+        if (!user.email) return false;
+
         const existingUser = await prisma.user.findUnique({
-          where: { email: user.email! },
+          where: { email: user.email },
+          include: { accounts: true },
         });
 
-        // If user exists but doesn't have Google account linked
-        if (existingUser) {
-          // Check if user already has a Google account
-          const existingGoogleAccount = await prisma.account.findFirst({
-            where: {
-              userId: existingUser.id,
-              provider: "google",
-            },
-          });
-
-          if (!existingGoogleAccount) {
-            // Link the Google account to the existing user
-            await prisma.account.create({
-              data: {
-                userId: existingUser.id,
-                type: account.type!,
-                provider: account.provider,
-                providerAccountId: account.providerAccountId!,
-                access_token: account.access_token?.toString(),
-                expires_at: account.expires_at,
-                token_type: account.token_type?.toString(),
-                scope: account.scope?.toString(),
-                id_token: account.id_token?.toString(),
-                session_state: account.session_state?.toString(),
-              },
-            });
-
-            // Update user information with Google data if needed
-            await prisma.user.update({
-              where: { id: existingUser.id },
-              data: {
-                image: user.image || existingUser.image,
-                name: user.name || existingUser.name,
-                emailVerified: new Date(),
-              },
-            });
-          }
+        // If user exists but doesn't have a Google account linked
+        if (
+          existingUser &&
+          !existingUser.accounts.some((a) => a.provider === "google")
+        ) {
+          return "/auth/link-account?email=" + encodeURIComponent(user.email);
         }
 
         return true;
@@ -71,32 +47,25 @@ export const {
         return !!existingUser?.emailVerified;
       }
 
-      return false;
+      return true;
     },
     async jwt({ token }) {
-      console.log("jwt", token);
-      if (!token.sub) {
-        return token;
-      }
-      const existingUser = await getUserById(token.sub);
+      if (!token.sub) return token;
 
-      if (!existingUser) {
-        return token;
-      }
+      const existingUser = await getUserById(token.sub);
+      if (!existingUser) return token;
 
       const existingAccount = await getAccountByUserId(existingUser.id);
 
-      //cette methode permet de reduire les query a la database
       token.isOauth = !!existingAccount;
       token.name = existingUser.name;
       token.email = existingUser.email;
       token.image = existingUser.image;
       token.role = existingUser.role;
+
       return token;
     },
     async session({ token, session }) {
-      console.log("session object", session);
-
       return {
         ...session,
         user: {
@@ -107,10 +76,6 @@ export const {
         },
       };
     },
-  },
-  pages: {
-    signIn: "/auth/login",
-    error: "/auth/error",
   },
   events: {
     async linkAccount({ user }) {
