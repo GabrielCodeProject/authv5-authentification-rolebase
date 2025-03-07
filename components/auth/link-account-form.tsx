@@ -11,6 +11,7 @@ import { FormError } from "@/components/auth/form-error";
 import { FormSuccess } from "@/components/auth/form-success";
 import { linkAccount } from "@/actions/link-account";
 import FormfieldCustom from "../formfield-custom";
+import { signIn } from "next-auth/react";
 
 const LinkAccountSchema = z.object({
   password: z.string().min(1, "Password is required"),
@@ -34,16 +35,26 @@ export default function LinkAccountForm({ email }: { email: string }) {
     setIsPending(true);
 
     try {
+      // First verify credentials
       const result = await linkAccount(email, values.password);
 
       if (result?.error) {
         setError(result.error);
-      } else {
-        setSuccess("Verified! Linking your account...");
+        setIsPending(false);
+        return;
       }
-    } catch (err) {
+
+      // If credentials are valid, show success message
+      setSuccess("Verified! Linking your account...");
+
+      // Then initiate Google OAuth flow
+      await signIn("google", {
+        callbackUrl: "/dashboard",
+        redirect: true,
+      });
+    } catch (error) {
+      console.error("Link account error:", error);
       setError("Something went wrong");
-    } finally {
       setIsPending(false);
     }
   };

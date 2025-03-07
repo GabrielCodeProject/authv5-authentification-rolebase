@@ -34,7 +34,21 @@ export const {
           existingUser &&
           !existingUser.accounts.some((a) => a.provider === "google")
         ) {
-          return "/auth/link-account?email=" + encodeURIComponent(user.email);
+          // Check if the user is already authenticated with credentials
+          const session = await auth();
+
+          console.log("Current session:", session);
+          console.log("Attempting to link:", user.email);
+          console.log("Session email:", session?.user?.email);
+
+          // If no session or emails don't match, redirect to link-account
+          if (!session?.user?.email || session.user.email !== user.email) {
+            console.log("Redirecting to link-account");
+            return "/auth/link-account?email=" + encodeURIComponent(user.email);
+          }
+
+          // If we have a valid session and emails match, allow the link
+          return true;
         }
 
         return true;
@@ -79,9 +93,12 @@ export const {
   },
   events: {
     async linkAccount({ user }) {
+      // Update the user's email verification status when account is linked
       await prisma.user.update({
         where: { id: user.id },
-        data: { emailVerified: new Date() },
+        data: {
+          emailVerified: new Date(),
+        },
       });
     },
   },
