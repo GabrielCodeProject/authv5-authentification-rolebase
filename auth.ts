@@ -37,13 +37,8 @@ export const {
           // Check if the user is already authenticated with credentials
           const session = await auth();
 
-          console.log("Current session:", session);
-          console.log("Attempting to link:", user.email);
-          console.log("Session email:", session?.user?.email);
-
           // If no session or emails don't match, redirect to link-account
           if (!session?.user?.email || session.user.email !== user.email) {
-            console.log("Redirecting to link-account");
             return "/auth/link-account?email=" + encodeURIComponent(user.email);
           }
 

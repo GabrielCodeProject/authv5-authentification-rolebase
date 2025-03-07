@@ -4,9 +4,6 @@ import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { signIn } from "@/auth";
 
-// Store linking tokens in memory (you might want to use Redis in production)
-const linkingTokens = new Map<string, { email: string; expiresAt: number }>();
-
 /**
  * Server action to verify user credentials and establish a session
  * This is used in the account linking flow to ensure the user owns both accounts
@@ -48,29 +45,5 @@ export async function linkAccount(email: string, password: string) {
   } catch (error) {
     console.error("Link account error:", error);
     return { error: "Something went wrong" };
-  }
-}
-
-export async function validateLinkingToken(
-  token: string
-): Promise<string | null> {
-  try {
-    const data = linkingTokens.get(token);
-
-    if (!data) return null;
-
-    // Check if token has expired
-    if (Date.now() > data.expiresAt) {
-      linkingTokens.delete(token);
-      return null;
-    }
-
-    // Delete token after use
-    linkingTokens.delete(token);
-
-    return data.email;
-  } catch (error) {
-    console.error("Error validating linking token:", error);
-    return null;
   }
 }

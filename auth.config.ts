@@ -10,7 +10,7 @@ export default {
   providers: [
     Google({
       profile: (profile: GoogleProfile) => ({
-        id: profile.sub, // Ensure the 'id' (sub) is returned
+        id: profile.sub,
         firstName: profile.given_name,
         lastName: profile.family_name,
         email: profile.email,
@@ -26,7 +26,6 @@ export default {
       async authorize(credentials) {
         try {
           const validatedData = LoginSchema.safeParse(credentials);
-          console.log("validated data:", validatedData);
 
           if (!validatedData.success) {
             return null;

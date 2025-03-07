@@ -8,7 +8,6 @@ import prisma from "@/lib/prisma";
 
 export const login = async (data: z.infer<typeof LoginSchema>) => {
   const validatedData = LoginSchema.parse(data);
-  console.log("validated data: ", validatedData);
 
   if (!validatedData) {
     return { error: "Invalid input data" };
@@ -36,8 +35,6 @@ export const login = async (data: z.infer<typeof LoginSchema>) => {
       password,
       redirect: false,
     });
-
-    console.log("Sign in result:", result);
 
     if (result?.error) {
       return { error: "Invalid email or password" };
