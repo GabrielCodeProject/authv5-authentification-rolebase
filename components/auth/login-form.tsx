@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { LoginSchema } from "@/schemas";
 import { z } from "zod";
 import { Button } from "../ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FormError } from "./form-error";
 import { login } from "@/actions/login";
 import { Path, useForm } from "react-hook-form";
@@ -13,11 +13,21 @@ import GoogleLogin from "./google-button";
 import FormfieldCustom from "../formfield-custom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { getCsrfToken } from "next-auth/react";
 
 const LoginForm = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [csrfToken, setCsrfToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCsrfToken = async () => {
+      const token = await getCsrfToken();
+      setCsrfToken(token);
+    };
+    fetchCsrfToken();
+  }, []);
 
   interface FieldDefinition {
     id: number;
@@ -57,7 +67,15 @@ const LoginForm = () => {
       setLoading(true);
       setError("");
 
-      const result = await login(data);
+      if (!csrfToken) {
+        setError("CSRF token not available");
+        return;
+      }
+
+      const result = await login({
+        ...data,
+        csrfToken,
+      });
 
       if (result?.error) {
         setError(result.error);
@@ -81,6 +99,7 @@ const LoginForm = () => {
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <input type="hidden" name="csrfToken" value={csrfToken ?? ""} />
           <div className="space-y-4">
             {fields.map((field) => (
               <FormfieldCustom
@@ -102,7 +121,11 @@ const LoginForm = () => {
             </Button>
           </div>
           <FormError message={error} />
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={loading || !csrfToken}
+          >
             {loading ? "Loading..." : "Login"}
           </Button>
         </form>

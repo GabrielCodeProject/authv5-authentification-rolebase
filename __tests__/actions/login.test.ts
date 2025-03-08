@@ -9,6 +9,8 @@ jest.mock("@/auth.config", () => ({
 import { login } from "@/actions/login";
 import { mockPrisma } from "../setup";
 
+const mockCsrfToken = "mock-csrf-token";
+
 describe("login", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -20,6 +22,7 @@ describe("login", () => {
     const result = await login({
       email: "nonexistent@example.com",
       password: "password123",
+      csrfToken: mockCsrfToken,
     });
 
     expect(result).toEqual({ error: "User not found" });
@@ -36,6 +39,7 @@ describe("login", () => {
     const result = await login({
       email: "test@example.com",
       password: "password123",
+      csrfToken: mockCsrfToken,
     });
 
     expect(result).toEqual({
@@ -57,6 +61,7 @@ describe("login", () => {
     const result = await login({
       email: "test@example.com",
       password: "wrongpassword",
+      csrfToken: mockCsrfToken,
     });
 
     expect(result).toEqual({ error: "Invalid email or password" });
@@ -76,6 +81,7 @@ describe("login", () => {
     const result = await login({
       email: "test@example.com",
       password: "correctpassword",
+      csrfToken: mockCsrfToken,
     });
 
     expect(result).toEqual({ success: true, redirect: "/dashboard" });

@@ -6,14 +6,19 @@ import { signIn } from "@/auth";
 import { AuthError } from "next-auth";
 import prisma from "@/lib/prisma";
 
-export const login = async (data: z.infer<typeof LoginSchema>) => {
+interface LoginData extends z.infer<typeof LoginSchema> {
+  csrfToken?: string;
+}
+
+export const login = async (data: LoginData) => {
   const validatedData = LoginSchema.parse(data);
 
   if (!validatedData) {
     return { error: "Invalid input data" };
   }
   const { email, password } = validatedData;
-
+  const { csrfToken } = data;
+  console.log("csrftoken", csrfToken);
   const userExists = await prisma.user.findFirst({
     where: {
       email: email,
@@ -33,6 +38,7 @@ export const login = async (data: z.infer<typeof LoginSchema>) => {
     const result = await signIn("credentials", {
       email: userExists.email,
       password,
+      csrfToken,
       redirect: false,
     });
 
