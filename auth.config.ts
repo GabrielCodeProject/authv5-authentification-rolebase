@@ -1,10 +1,19 @@
 import Credentials from "next-auth/providers/credentials";
 import Google, { GoogleProfile } from "next-auth/providers/google";
-
-import type { NextAuthConfig } from "next-auth";
+import { CredentialsSignin, type NextAuthConfig } from "next-auth";
 import { LoginSchema } from "./schemas";
-import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { getUserAccountByEmail } from "./data/user";
+import { Prisma } from "@prisma/client";
+import { ZodError } from "zod";
+
+class InvalidLoginError extends CredentialsSignin {
+  constructor(code: string) {
+    super();
+    this.code = code;
+    this.message = code;
+  }
+}
 
 export default {
   providers: [
@@ -32,14 +41,10 @@ export default {
           }
           const { email, password } = validatedData.data;
 
-          const userExists = await prisma.user.findFirst({
-            where: {
-              email: email,
-            },
-          });
+          const userExists = await getUserAccountByEmail(email);
 
           console.log("auth user fetch", userExists);
-          if (!userExists || !userExists.password || !userExists.email) {
+          if (!userExists || !userExists.password) {
             return null;
           }
 
@@ -58,7 +63,18 @@ export default {
           return userExists;
         } catch (error) {
           console.error("Authorization error:", error);
-          return null;
+          if (
+            error instanceof Prisma.PrismaClientInitializationError ||
+            error instanceof Prisma.PrismaClientUnknownRequestError
+          )
+            throw new InvalidLoginError(
+              "System Error Occured. Please Contact Support Team"
+            );
+          if (error instanceof ZodError)
+            throw new InvalidLoginError(
+              error.errors[0]?.message || "Unknown error occurred"
+            );
+          throw error;
         }
       },
     }),

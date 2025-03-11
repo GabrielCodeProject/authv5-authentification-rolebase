@@ -58,7 +58,15 @@ export const {
 
       return true;
     },
-    async jwt({ token }) {
+    async jwt({ token, account, user }) {
+      console.log("jwt callback in auth file account", account);
+      console.log("jwt callback in auth file user", user);
+      if (account?.provider === "credentials") {
+        console.log(
+          "jwt callback in auth file account.provider",
+          account.provider
+        );
+      }
       if (!token.sub) return token;
 
       const existingUser = await getUserById(token.sub);
@@ -87,6 +95,15 @@ export const {
     },
   },
   events: {
+    async signOut(message) {
+      if ("session" in message && message.session?.sessionToken) {
+        await prisma.session.deleteMany({
+          where: {
+            sessionToken: message.session.sessionToken,
+          },
+        });
+      }
+    },
     async linkAccount({ user }) {
       // Update the user's email verification status when account is linked
       await prisma.user.update({

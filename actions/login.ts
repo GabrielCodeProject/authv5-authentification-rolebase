@@ -5,6 +5,7 @@ import { LoginSchema } from "@/schemas";
 import { signIn } from "@/auth";
 import { AuthError } from "next-auth";
 import prisma from "@/lib/prisma";
+import { getUserAccountByEmail } from "@/data/user";
 
 interface LoginData extends z.infer<typeof LoginSchema> {
   csrfToken?: string;
@@ -19,14 +20,10 @@ export const login = async (data: LoginData) => {
   const { email, password } = validatedData;
   const { csrfToken } = data;
   console.log("csrftoken", csrfToken);
-  const userExists = await prisma.user.findFirst({
-    where: {
-      email: email,
-    },
-  });
+  const userExists = await getUserAccountByEmail(email);
 
   if (!userExists || !userExists.password || !userExists.email) {
-    return { error: "User not found" };
+    return { error: "email not exist please register" };
   }
 
   // Check email verification before attempting sign in
