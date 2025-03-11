@@ -1,23 +1,21 @@
 "use server";
 
-import * as z from "zod";
-import { LoginSchema } from "@/schemas";
+import { LoginSchema, loginType } from "@/schemas";
 import { signIn } from "@/auth";
 import { AuthError } from "next-auth";
-import prisma from "@/lib/prisma";
 import { getUserAccountByEmail } from "@/data/user";
 
-interface LoginData extends z.infer<typeof LoginSchema> {
+interface LoginData extends loginType {
   csrfToken?: string;
 }
 
 export const login = async (data: LoginData) => {
-  const validatedData = LoginSchema.parse(data);
+  const validatedData = LoginSchema.safeParse(data);
 
-  if (!validatedData) {
+  if (!validatedData.success) {
     return { error: "Invalid input data" };
   }
-  const { email, password } = validatedData;
+  const { email, password } = validatedData.data;
   const { csrfToken } = data;
   console.log("csrftoken", csrfToken);
   const userExists = await getUserAccountByEmail(email);
@@ -55,10 +53,8 @@ export const login = async (data: LoginData) => {
         case "CredentialsSignin":
           return { error: "Invalid email or password" };
         default:
-          return { error: "An error occurred during sign in" };
+          return { error: "Something went wrong. Please try again." };
       }
     }
-
-    return { error: "Something went wrong. Please try again." };
   }
 };
