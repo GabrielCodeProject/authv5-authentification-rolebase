@@ -7,16 +7,13 @@ import { z } from "zod";
 import { Button } from "../ui/button";
 import { useState, useEffect } from "react";
 import { FormError } from "./form-error";
-import { login } from "@/actions/login";
 import { Path, useForm } from "react-hook-form";
 import GoogleLogin from "./google-button";
 import FormfieldCustom from "../formfield-custom";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { getCsrfToken } from "next-auth/react";
 
 const LoginForm = () => {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
@@ -72,17 +69,34 @@ const LoginForm = () => {
         return;
       }
 
-      const result = await login({
+      console.log("Submitting login form with data:", {
         ...data,
-        csrfToken,
+        csrfToken: "[REDACTED]",
       });
 
-      if (result?.error) {
-        setError(result.error);
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...data,
+          csrfToken,
+        }),
+      });
+
+      const result = await response.json();
+      console.log("Login response:", response.status, result);
+
+      if (!response.ok) {
+        setError(result.error || "An unexpected error occurred");
       } else if (result?.success && result?.redirect) {
-        router.push(result.redirect);
+        console.log("Login successful, redirecting to:", result.redirect);
+        // Don't use router.push, use direct window location change
+        window.location.href = result.redirect;
       }
-    } catch {
+    } catch (error) {
+      console.error("Login error:", error);
       setError("An unexpected error occurred");
     } finally {
       setLoading(false);

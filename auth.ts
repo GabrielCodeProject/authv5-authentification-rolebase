@@ -1,9 +1,28 @@
 import NextAuth from "next-auth";
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import prisma from "@/lib/prisma";
 import authConfig from "./auth.config";
 import { getUserById } from "@/data/user";
 import { getAccountByUserId } from "@/data/account";
+import { CustomPrismaAdapter } from "./lib/auth-adapter";
+
+// Define session user properties to fix type errors
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+      role?: string;
+      isOauth?: boolean;
+    };
+  }
+
+  interface User {
+    role?: string;
+    emailVerified?: Date;
+  }
+}
 
 export const {
   auth,
@@ -11,15 +30,33 @@ export const {
   signIn,
   signOut,
 } = NextAuth({
-  adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt" },
+  adapter: CustomPrismaAdapter(),
+  session: {
+    strategy: "database",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // 24 hours
+  },
   pages: {
     signIn: "/auth/login",
     error: "/auth/error",
   },
+  cookies: {
+    sessionToken: {
+      name: "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
+  debug: process.env.NODE_ENV === "development",
   ...authConfig,
   callbacks: {
     async signIn({ user, account }) {
+      console.log("Sign in callback with account:", account?.provider);
+
       // Allow OAuth providers
       if (account?.provider === "google") {
         if (!user.email) return false;
@@ -53,57 +90,32 @@ export const {
       if (account?.provider === "credentials") {
         if (!user.id) return false;
         const existingUser = await getUserById(user.id);
+        console.log(
+          "Checking user verification:",
+          existingUser?.id,
+          !!existingUser?.emailVerified
+        );
         return !!existingUser?.emailVerified;
       }
 
       return true;
     },
-    async jwt({ token, account, user }) {
-      console.log("jwt callback in auth file account", account);
-      console.log("jwt callback in auth file user", user);
-      if (account?.provider === "credentials") {
-        console.log(
-          "jwt callback in auth file account.provider",
-          account.provider
-        );
+    async session({ session, user }) {
+      if (user) {
+        console.log("Session callback for user:", user.id);
+        const dbUser = await getUserById(user.id);
+        session.user.id = user.id;
+        // Only add role if the user has one in the database
+        if (dbUser?.role) {
+          session.user.role = dbUser.role;
+        }
+        // Check if user has an OAuth account
+        session.user.isOauth = !!(await getAccountByUserId(user.id));
       }
-      if (!token.sub) return token;
-
-      const existingUser = await getUserById(token.sub);
-      if (!existingUser) return token;
-
-      const existingAccount = await getAccountByUserId(existingUser.id);
-
-      token.isOauth = !!existingAccount;
-      token.name = existingUser.name;
-      token.email = existingUser.email;
-      token.image = existingUser.image;
-      token.role = existingUser.role;
-
-      return token;
-    },
-    async session({ token, session }) {
-      return {
-        ...session,
-        user: {
-          ...session.user,
-          id: token.sub,
-          isOauth: token.isOauth,
-          role: token.role,
-        },
-      };
+      return session;
     },
   },
   events: {
-    async signOut(message) {
-      if ("session" in message && message.session?.sessionToken) {
-        await prisma.session.deleteMany({
-          where: {
-            sessionToken: message.session.sessionToken,
-          },
-        });
-      }
-    },
     async linkAccount({ user }) {
       // Update the user's email verification status when account is linked
       await prisma.user.update({
@@ -112,6 +124,15 @@ export const {
           emailVerified: new Date(),
         },
       });
+    },
+    async signIn({ user, account }) {
+      console.log(`User ${user.id} signed in via ${account?.provider}`);
+    },
+    async createUser({ user }) {
+      console.log(`New user created: ${user.id}`);
+    },
+    async session({ session }) {
+      console.log(`Session updated for user: ${session?.user?.id}`);
     },
   },
 });

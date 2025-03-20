@@ -1,7 +1,23 @@
-import { auth } from "@/auth";
+"use client";
+
+import { useEffect, useState } from "react";
 import AdminTools from "@/components/admin/admin-tool";
 import UnauthorizedMessage from "@/components/unauthorized-message/unauthorized-message";
 import { EnumRole } from "@prisma/client";
+
+type User = {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  role?: string;
+  isOauth?: boolean;
+};
+
+type Session = {
+  user: User;
+  expires: string;
+};
 
 type RoleSpecificContentProps = {
   role: EnumRole;
@@ -32,7 +48,7 @@ const DashboardLayout = ({
 );
 
 // Profile Section Component
-const ProfileSection = ({ user }: { user: any }) => (
+const ProfileSection = ({ user }: { user: User }) => (
   <div className="mb-6 w-full">
     <h2 className="text-2xl mb-2">Your Profile</h2>
     <p className="text-lg mb-1">Email: {user.email}</p>
@@ -48,17 +64,83 @@ const SessionDetails = ({ expires }: { expires: string }) => (
   </div>
 );
 
-const DashboardPage = async () => {
-  const session = await auth();
-  console.log("session object from dashboard:", session);
+export default function DashboardPage() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  // Early return for unauthorized cases
-  if (!session || !session.user) {
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        setLoading(true);
+        // Fetch the session from our API endpoint
+        const response = await fetch("/api/auth/session");
+
+        if (!response.ok) {
+          if (response.status === 401 && retryCount < 3) {
+            // If we get a 401, wait briefly and retry (up to 3 times)
+            // This helps when the cookie was just set but not yet recognized
+            console.log(
+              `Session fetch attempt ${retryCount + 1} failed, retrying...`
+            );
+            setTimeout(() => {
+              setRetryCount((prev) => prev + 1);
+            }, 500);
+            return;
+          }
+          throw new Error(`Failed to fetch session: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("Session data:", data);
+
+        if (data.authenticated) {
+          // Construct a session object from the response
+          const sessionData: Session = {
+            user: data.user,
+            expires:
+              data.expires ||
+              new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          };
+          setSession(sessionData);
+        } else {
+          setSession(null);
+          setError("Session not found");
+          // If we're not authenticated and we have a cookie, try to refresh the page
+          if (
+            document.cookie.includes("next-auth.session-token") &&
+            retryCount < 3
+          ) {
+            setTimeout(() => {
+              setRetryCount((prev) => prev + 1);
+            }, 500);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching session:", err);
+        setError("Failed to load session data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSession();
+  }, [retryCount]);
+
+  if (loading) {
+    return (
+      <DashboardLayout title="Loading...">
+        <p>Loading your dashboard...</p>
+      </DashboardLayout>
+    );
+  }
+
+  if (error || !session) {
     return (
       <UnauthorizedMessage title="Unauthorized">
-        {!session
-          ? "You need to log in to access the dashboard."
-          : "Your session is invalid"}
+        {error || "You need to log in to access the dashboard."}
       </UnauthorizedMessage>
     );
   }
@@ -74,14 +156,14 @@ const DashboardPage = async () => {
       <ProfileSection user={user} />
       <SessionDetails expires={session.expires} />
 
-      <RoleSpecificContent
-        role={user.role}
-        contentMap={{
-          [EnumRole.ADMIN]: <AdminTools />,
-        }}
-      />
+      {user.role && (
+        <RoleSpecificContent
+          role={user.role as EnumRole}
+          contentMap={{
+            [EnumRole.ADMIN]: <AdminTools />,
+          }}
+        />
+      )}
     </DashboardLayout>
   );
-};
-
-export default DashboardPage;
+}
