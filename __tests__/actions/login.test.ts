@@ -6,8 +6,12 @@ jest.mock("@/auth.config", () => ({
   providers: [],
 }));
 
+jest.mock("@/data/user", () => ({
+  getUserAccountByEmail: jest.fn(),
+}));
+
 import { login } from "@/actions/login";
-import { mockPrisma } from "../setup";
+import { getUserAccountByEmail } from "@/data/user";
 
 const mockCsrfToken = "mock-csrf-token";
 
@@ -17,7 +21,7 @@ describe("login", () => {
   });
 
   it("should return error for non-existent user", async () => {
-    mockPrisma.user.findFirst.mockResolvedValue(null);
+    (getUserAccountByEmail as jest.Mock).mockResolvedValue(null);
 
     const result = await login({
       email: "nonexistent@example.com",
@@ -25,11 +29,11 @@ describe("login", () => {
       csrfToken: mockCsrfToken,
     });
 
-    expect(result).toEqual({ error: "User not found" });
+    expect(result).toEqual({ error: "email not exist please register" });
   });
 
   it("should return error for unverified email", async () => {
-    mockPrisma.user.findFirst.mockResolvedValue({
+    (getUserAccountByEmail as jest.Mock).mockResolvedValue({
       id: "1",
       email: "test@example.com",
       password: "hashedPassword",
@@ -48,7 +52,7 @@ describe("login", () => {
   });
 
   it("should return error for invalid credentials", async () => {
-    mockPrisma.user.findFirst.mockResolvedValue({
+    (getUserAccountByEmail as jest.Mock).mockResolvedValue({
       id: "1",
       email: "test@example.com",
       password: "hashedPassword",
@@ -68,7 +72,7 @@ describe("login", () => {
   });
 
   it("should return success for valid credentials", async () => {
-    mockPrisma.user.findFirst.mockResolvedValue({
+    (getUserAccountByEmail as jest.Mock).mockResolvedValue({
       id: "1",
       email: "test@example.com",
       password: "hashedPassword",

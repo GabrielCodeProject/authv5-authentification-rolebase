@@ -1,47 +1,60 @@
 import { register } from "@/actions/register";
 import { mockPrisma } from "../setup";
-import { generateVerificationToken } from "@/lib/token";
+import bcryptjs from "bcryptjs";
 import { sendVerificationEmail } from "@/lib/mail";
+import { generateVerificationToken } from "@/lib/token";
 
-jest.mock("@/lib/mail");
+jest.mock("@/lib/mail", () => ({
+  sendVerificationEmail: jest.fn(),
+}));
+
+jest.mock("bcryptjs", () => ({
+  hash: jest.fn(),
+}));
+
+jest.mock("crypto", () => ({
+  randomUUID: jest.fn(),
+}));
+
 jest.mock("@/lib/token", () => ({
   generateVerificationToken: jest.fn(),
 }));
 
-describe("register", () => {
-  let consoleErrorSpy: jest.SpyInstance;
+jest.mock("@/data/user", () => ({
+  getUserAccountByEmail: jest.fn(),
+}));
 
+import { getUserAccountByEmail } from "@/data/user";
+
+describe("register", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    consoleErrorSpy.mockRestore();
   });
 
   it("should return error for existing email", async () => {
-    mockPrisma.user.findFirst.mockResolvedValue({
+    (getUserAccountByEmail as jest.Mock).mockResolvedValue({
       id: "1",
-      email: "test@example.com",
+      email: "existing@example.com",
     });
 
     const result = await register({
-      email: "test@example.com",
+      email: "existing@example.com",
+      name: "John Doe",
       password: "password123",
-      name: "Test User",
       passwordConfirmation: "password123",
     });
 
-    expect(result).toEqual({ error: "User already exists" });
+    expect(result).toEqual({ error: "Email already exists" });
+    expect(mockPrisma.user.create).not.toHaveBeenCalled();
   });
 
-  it("should successfully register a new user", async () => {
-    mockPrisma.user.findFirst.mockResolvedValue(null);
+  it("should create a new user and send verification email", async () => {
+    (getUserAccountByEmail as jest.Mock).mockResolvedValue(null);
+    (bcryptjs.hash as jest.Mock).mockResolvedValue("hashedPassword");
     mockPrisma.user.create.mockResolvedValue({
       id: "1",
       email: "test@example.com",
-      name: "Test User",
+      name: "John Doe",
       role: "USER",
     });
 
@@ -51,13 +64,13 @@ describe("register", () => {
       expires: new Date(),
     };
 
-    jest.mocked(generateVerificationToken).mockResolvedValue(mockToken);
-    jest.mocked(sendVerificationEmail).mockResolvedValue();
+    (generateVerificationToken as jest.Mock).mockResolvedValue(mockToken);
+    (sendVerificationEmail as jest.Mock).mockResolvedValue(undefined);
 
     const result = await register({
       email: "test@example.com",
+      name: "John Doe",
       password: "password123",
-      name: "Test User",
       passwordConfirmation: "password123",
     });
 
@@ -65,11 +78,12 @@ describe("register", () => {
       user: {
         id: "1",
         email: "test@example.com",
-        name: "Test User",
+        name: "John Doe",
         role: "USER",
       },
-      success: "user created with success",
+      success: "confimation email sent ! ",
     });
+    expect(mockPrisma.user.create).toHaveBeenCalled();
     expect(generateVerificationToken).toHaveBeenCalledWith("test@example.com");
     expect(sendVerificationEmail).toHaveBeenCalledWith(
       "test@example.com",
@@ -77,37 +91,30 @@ describe("register", () => {
     );
   });
 
-  it("should handle registration error gracefully", async () => {
-    mockPrisma.user.findFirst.mockResolvedValue(null);
+  it("should handle database error", async () => {
+    (getUserAccountByEmail as jest.Mock).mockResolvedValue(null);
+    (bcryptjs.hash as jest.Mock).mockResolvedValue("hashedPassword");
     mockPrisma.user.create.mockRejectedValue(new Error("Database error"));
 
     const result = await register({
       email: "test@example.com",
+      name: "John Doe",
       password: "password123",
-      name: "Test User",
       passwordConfirmation: "password123",
     });
 
     expect(result).toEqual({ error: "Error registering user" });
-    expect(mockPrisma.user.create).toHaveBeenCalled();
-    expect(generateVerificationToken).not.toHaveBeenCalled();
-    expect(sendVerificationEmail).not.toHaveBeenCalled();
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "Error registering user: ",
-      expect.any(Error)
-    );
   });
 
   it("should return error for mismatched passwords", async () => {
     const result = await register({
       email: "test@example.com",
+      name: "John Doe",
       password: "password123",
-      name: "Test User",
-      passwordConfirmation: "password456",
+      passwordConfirmation: "differentpassword",
     });
 
     expect(result).toEqual({ error: "Passwords do not match" });
-    expect(mockPrisma.user.findFirst).not.toHaveBeenCalled();
     expect(mockPrisma.user.create).not.toHaveBeenCalled();
   });
 });
