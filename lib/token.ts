@@ -27,3 +27,29 @@ export const generateVerificationToken = async (email: string) => {
   });
   return verificationToken;
 };
+
+// Define interface for OAuth account data
+interface OAuthAccountData {
+  provider: string;
+  providerAccountId: string;
+  access_token?: string;
+  refresh_token?: string;
+  expires_at?: number;
+  token_type?: string;
+  scope?: string;
+  id_token?: string;
+  session_state?: string | null | undefined;
+}
+
+// Add a utility function to store temporary data for account linking
+export const storeTempAccountData = (data: OAuthAccountData) => {
+  const jsonData = JSON.stringify(data);
+
+  // Store in both global variable and environment variable for redundancy
+  global.TEMP_ACCOUNT_DATA = jsonData;
+
+  // Also use environment variable as fallback
+  process.env.NEXT_PUBLIC_TEMP_ACCOUNT_DATA = jsonData;
+
+  return jsonData;
+};

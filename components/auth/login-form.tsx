@@ -7,15 +7,17 @@ import { z } from "zod";
 import { Button } from "../ui/button";
 import { useState, useEffect } from "react";
 import { FormError } from "./form-error";
+import FormSuccess from "./form-success";
 import { Path, useForm } from "react-hook-form";
 import GoogleLogin from "./google-button";
 import FormfieldCustom from "../formfield-custom";
 import Link from "next/link";
 import { getCsrfToken } from "next-auth/react";
 
-const LoginForm = () => {
+const LoginForm = ({ accountLinked = false }: { accountLinked?: boolean }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState<string | null>(null);
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
 
   useEffect(() => {
@@ -24,7 +26,14 @@ const LoginForm = () => {
       setCsrfToken(token);
     };
     fetchCsrfToken();
-  }, []);
+
+    // Set success message if account was just linked
+    if (accountLinked) {
+      setSuccess(
+        "Your Google account has been successfully linked! Please sign in."
+      );
+    }
+  }, [accountLinked]);
 
   interface FieldDefinition {
     id: number;
@@ -63,6 +72,7 @@ const LoginForm = () => {
     try {
       setLoading(true);
       setError("");
+      setSuccess(null);
 
       if (!csrfToken) {
         setError("CSRF token not available");
@@ -135,6 +145,7 @@ const LoginForm = () => {
             </Button>
           </div>
           <FormError message={error} />
+          <FormSuccess message={success} />
           <Button
             type="submit"
             className="w-full"

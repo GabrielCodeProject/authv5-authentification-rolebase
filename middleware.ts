@@ -20,9 +20,40 @@ export default async function middleware(req: NextRequest) {
   const isPrivateRoute = privateRoutes.includes(nextUrl.pathname);
   const isAuthRoute = nextUrl.pathname.startsWith("/auth");
   const isApiRoute = nextUrl.pathname.startsWith("/api");
-  const isLinkAccountRoute = nextUrl.pathname === "/auth/link-account";
+  const isLinkAccountRoute = nextUrl.pathname.startsWith("/auth/link-account");
+
+  // Special handling for Google OAuth callback
+  if (
+    req.nextUrl.pathname === "/api/auth/callback/google" &&
+    req.nextUrl.searchParams.has("state")
+  ) {
+    console.log("Google callback detected in middleware");
+    console.log("Full URL:", req.nextUrl.toString());
+    console.log(
+      "Query params:",
+      Object.fromEntries(req.nextUrl.searchParams.entries())
+    );
+
+    // Let NextAuth handle the callback with allowDangerousEmailAccountLinking
+    return NextResponse.next();
+  }
 
   if (isApiRoute) {
+    return NextResponse.next();
+  }
+
+  // Special handling for link-account route which doesn't require authentication
+  if (isLinkAccountRoute) {
+    // Check if it has the required parameters
+    const hasEmail = nextUrl.searchParams.has("email");
+    const hasToken = nextUrl.searchParams.has("token");
+
+    if (!hasEmail || !hasToken) {
+      // Redirect to login if parameters are missing
+      return NextResponse.redirect(new URL("/auth/login", req.url));
+    }
+
+    // Allow access to link-account page with parameters
     return NextResponse.next();
   }
 
@@ -32,7 +63,7 @@ export default async function middleware(req: NextRequest) {
   }
 
   // Allow access to auth routes for non-logged in users
-  if (isAuthRoute && !isLoggedIn && !isLinkAccountRoute) {
+  if (isAuthRoute && !isLoggedIn) {
     return NextResponse.next();
   }
 

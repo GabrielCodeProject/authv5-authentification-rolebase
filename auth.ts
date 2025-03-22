@@ -4,6 +4,13 @@ import authConfig from "./auth.config";
 import { getUserById } from "@/data/user";
 import { getAccountByUserId } from "@/data/account";
 import { CustomPrismaAdapter } from "./lib/auth-adapter";
+import { createLinkAccountToken } from "@/data/link-account-token";
+import { storeTempAccountData } from "@/lib/token";
+
+// Add the global declaration
+declare global {
+  var TEMP_ACCOUNT_DATA: string | undefined;
+}
 
 // Define session user properties to fix type errors
 declare module "next-auth" {
@@ -76,7 +83,31 @@ export const {
 
           // If no session or emails don't match, redirect to link-account
           if (!session?.user?.email || session.user.email !== user.email) {
-            return "/auth/link-account?email=" + encodeURIComponent(user.email);
+            // Create a link account token
+            const linkToken = await createLinkAccountToken(user.email);
+
+            // Build the redirect URL with email and token
+            const redirectUrl = `/auth/link-account?email=${encodeURIComponent(
+              user.email
+            )}&token=${linkToken.token}`;
+
+            // Include account details in the token
+            const accountData = {
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+              access_token: account.access_token,
+              refresh_token: account.refresh_token,
+              expires_at: account.expires_at,
+              token_type: account.token_type,
+              scope: account.scope,
+              id_token: account.id_token,
+              session_state: account.session_state,
+            };
+
+            // Store account data using the utility function
+            storeTempAccountData(accountData);
+
+            return redirectUrl;
           }
 
           // If we have a valid session and emails match, allow the link
@@ -116,7 +147,11 @@ export const {
     },
   },
   events: {
-    async linkAccount({ user }) {
+    async linkAccount({ user, account }) {
+      console.log(
+        `Linking account for user ${user.id} with provider ${account.provider}`
+      );
+
       // Update the user's email verification status when account is linked
       await prisma.user.update({
         where: { id: user.id },

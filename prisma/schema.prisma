@@ -57,9 +57,24 @@ model Account {
   @@id([provider, providerAccountId])
 }
 
+/**
+ * This is used to verify the email of the user when they link their account
+ */
 model VerificationToken {
   email   String
   token   String
+  expires DateTime
+
+  @@id([email, token])
+}
+
+/**
+ * This is used for account linking to temporarily store a validated
+ * credential user's information before completing OAuth linking
+ */
+model LinkAccountToken {
+  email   String
+  token   String   @unique
   expires DateTime
 
   @@id([email, token])

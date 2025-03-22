@@ -1,49 +1,104 @@
 "use server";
 
-import prisma from "@/lib/prisma";
+import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { signIn } from "@/auth";
+import prisma from "@/lib/prisma";
+import { getLinkAccountTokenByToken } from "@/data/link-account-token";
+import { getUserByEmail } from "@/data/user";
+import { deleteLinkAccountToken } from "@/data/link-account-token";
 
-/**
- * Server action to verify user credentials and establish a session
- * This is used in the account linking flow to ensure the user owns both accounts
- */
-export async function linkAccount(email: string, password: string) {
+const LinkAccountSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  token: z.string(),
+  accountData: z.string().optional(),
+});
+
+export const linkAccount = async (
+  values: z.infer<typeof LinkAccountSchema>
+) => {
+  const validatedFields = LinkAccountSchema.safeParse(values);
+
+  if (!validatedFields.success) {
+    return { error: "Invalid fields" };
+  }
+
+  const { email, password, token, accountData } = validatedFields.data;
+
+  // Verify that the token exists and is not expired
+  const linkToken = await getLinkAccountTokenByToken(token);
+
+  if (!linkToken || linkToken.expires < new Date()) {
+    return { error: "Invalid or expired token" };
+  }
+
+  // Check if token email matches provided email
+  if (linkToken.email !== email) {
+    return { error: "Email does not match token" };
+  }
+
+  // Find user by email
+  const existingUser = await getUserByEmail(email);
+
+  if (!existingUser || !existingUser.password) {
+    return { error: "Email or password is incorrect" };
+  }
+
+  // Compare password
+  const passwordsMatch = await bcrypt.compare(password, existingUser.password);
+
+  if (!passwordsMatch) {
+    return { error: "Email or password is incorrect" };
+  }
+
   try {
-    // Find the user by email
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
+    // Parse account data from form values
+    if (!accountData) {
+      return { error: "Missing Google account data" };
+    }
+
+    const googleAccountData = JSON.parse(accountData);
+
+    if (!googleAccountData.provider || !googleAccountData.providerAccountId) {
+      return { error: "Invalid Google account data" };
+    }
+
+    // Create a new account link
+    await prisma.account.create({
+      data: {
+        userId: existingUser.id,
+        type: "oauth",
+        provider: googleAccountData.provider,
+        providerAccountId: googleAccountData.providerAccountId,
+        access_token: googleAccountData.access_token,
+        refresh_token: googleAccountData.refresh_token,
+        expires_at: googleAccountData.expires_at,
+        token_type: googleAccountData.token_type,
+        scope: googleAccountData.scope,
+        id_token: googleAccountData.id_token,
+        session_state: googleAccountData.session_state,
+      },
     });
 
-    if (!existingUser || !existingUser.password) {
-      return { error: "Invalid credentials" };
+    // Set emailVerified if not already set
+    if (!existingUser.emailVerified) {
+      await prisma.user.update({
+        where: { id: existingUser.id },
+        data: { emailVerified: new Date() },
+      });
     }
 
-    // Verify the password
-    const isPasswordValid = await bcrypt.compare(
-      password,
-      existingUser.password
-    );
+    // Delete the link token
+    await deleteLinkAccountToken(token);
 
-    if (!isPasswordValid) {
-      return { error: "Invalid credentials" };
-    }
-
-    // Sign in with credentials first to establish a session
-    const result = await signIn("credentials", {
+    return {
+      success: "Account linked successfully!",
+      redirect: true,
       email,
       password,
-      redirect: false,
-    });
-
-    if (result?.error) {
-      return { error: "Failed to verify credentials" };
-    }
-
-    // Return success to initiate Google OAuth
-    return { success: true };
+    };
   } catch (error) {
-    console.error("Link account error:", error);
+    console.error("Error linking account:", error);
     return { error: "Something went wrong" };
   }
-}
+};
