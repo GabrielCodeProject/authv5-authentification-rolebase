@@ -23,5 +23,19 @@ export const LoginSchema = z.object({
     message: "Password enter a valid password",
   }),
 });
+
+export const LinkAccountSchema = z.object({
+  email: z.string().email({
+    message: "Please enter a valid email address",
+  }),
+  password: z.string().min(1, {
+    message: "Please enter your password",
+  }),
+  token: z.string().min(1, {
+    message: "Invalid token",
+  }),
+});
+
 export type loginType = z.infer<typeof LoginSchema>;
 export type registerType = z.infer<typeof RegisterSchema>;
+export type linkAccountType = z.infer<typeof LinkAccountSchema>;

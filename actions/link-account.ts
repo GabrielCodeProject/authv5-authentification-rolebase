@@ -1,104 +1,105 @@
 "use server";
 
-import { z } from "zod";
-import bcrypt from "bcryptjs";
+import { LinkAccountSchema } from "@/schemas";
+import { AuthError } from "next-auth";
+import { getUserAccountByEmail } from "@/data/user";
+import {
+  deleteLinkAccountToken,
+  getLinkAccountTokenByToken,
+} from "@/data/link-account-token";
 import prisma from "@/lib/prisma";
-import { getLinkAccountTokenByToken } from "@/data/link-account-token";
-import { getUserByEmail } from "@/data/user";
-import { deleteLinkAccountToken } from "@/data/link-account-token";
+import bcrypt from "bcryptjs";
 
-const LinkAccountSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-  token: z.string(),
-  accountData: z.string().optional(),
-});
-
-export const linkAccount = async (
-  values: z.infer<typeof LinkAccountSchema>
-) => {
-  const validatedFields = LinkAccountSchema.safeParse(values);
-
-  if (!validatedFields.success) {
-    return { error: "Invalid fields" };
+export const linkAccount = async (data: {
+  email: string;
+  password: string;
+  token: string;
+}) => {
+  // Validate input data
+  const validatedData = LinkAccountSchema.safeParse(data);
+  if (!validatedData.success) {
+    return { error: "Invalid input data" };
   }
 
-  const { email, password, token, accountData } = validatedFields.data;
-
-  // Verify that the token exists and is not expired
-  const linkToken = await getLinkAccountTokenByToken(token);
-
-  if (!linkToken || linkToken.expires < new Date()) {
-    return { error: "Invalid or expired token" };
-  }
-
-  // Check if token email matches provided email
-  if (linkToken.email !== email) {
-    return { error: "Email does not match token" };
-  }
-
-  // Find user by email
-  const existingUser = await getUserByEmail(email);
-
-  if (!existingUser || !existingUser.password) {
-    return { error: "Email or password is incorrect" };
-  }
-
-  // Compare password
-  const passwordsMatch = await bcrypt.compare(password, existingUser.password);
-
-  if (!passwordsMatch) {
-    return { error: "Email or password is incorrect" };
-  }
+  const { email, password, token } = validatedData.data;
 
   try {
-    // Parse account data from form values
-    if (!accountData) {
-      return { error: "Missing Google account data" };
+    // Verify token is valid
+    const linkToken = await getLinkAccountTokenByToken(token);
+    if (!linkToken || linkToken.email !== email) {
+      return { error: "Invalid or expired token" };
     }
 
-    const googleAccountData = JSON.parse(accountData);
-
-    if (!googleAccountData.provider || !googleAccountData.providerAccountId) {
-      return { error: "Invalid Google account data" };
+    // Check token expiration
+    if (new Date(linkToken.expires) < new Date()) {
+      await deleteLinkAccountToken(token);
+      return { error: "Token has expired, please try again" };
     }
 
-    // Create a new account link
+    // Find user with the provided email
+    const user = await getUserAccountByEmail(email);
+    if (!user || !user.password) {
+      return { error: "Account not found" };
+    }
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return { error: "Invalid password" };
+    }
+
+    // Retrieve temporarily stored OAuth account data
+    const tempAccountData =
+      global.TEMP_ACCOUNT_DATA || process.env.NEXT_PUBLIC_TEMP_ACCOUNT_DATA;
+    if (!tempAccountData) {
+      return { error: "No account data available for linking" };
+    }
+
+    // Parse the account data
+    const accountData = JSON.parse(tempAccountData);
+
+    // Create a new account record
     await prisma.account.create({
       data: {
-        userId: existingUser.id,
+        userId: user.id,
         type: "oauth",
-        provider: googleAccountData.provider,
-        providerAccountId: googleAccountData.providerAccountId,
-        access_token: googleAccountData.access_token,
-        refresh_token: googleAccountData.refresh_token,
-        expires_at: googleAccountData.expires_at,
-        token_type: googleAccountData.token_type,
-        scope: googleAccountData.scope,
-        id_token: googleAccountData.id_token,
-        session_state: googleAccountData.session_state,
+        provider: accountData.provider,
+        providerAccountId: accountData.providerAccountId,
+        access_token: accountData.access_token,
+        refresh_token: accountData.refresh_token,
+        expires_at: accountData.expires_at,
+        token_type: accountData.token_type,
+        scope: accountData.scope,
+        id_token: accountData.id_token,
+        session_state: accountData.session_state,
       },
     });
 
-    // Set emailVerified if not already set
-    if (!existingUser.emailVerified) {
+    // Ensure email is verified
+    if (!user.emailVerified) {
       await prisma.user.update({
-        where: { id: existingUser.id },
+        where: { id: user.id },
         data: { emailVerified: new Date() },
       });
     }
 
-    // Delete the link token
+    // Clear the temporary data
+    global.TEMP_ACCOUNT_DATA = undefined;
+    if (process.env.NEXT_PUBLIC_TEMP_ACCOUNT_DATA) {
+      process.env.NEXT_PUBLIC_TEMP_ACCOUNT_DATA = undefined;
+    }
+
+    // Delete the token after successful linking
     await deleteLinkAccountToken(token);
 
-    return {
-      success: "Account linked successfully!",
-      redirect: true,
-      email,
-      password,
-    };
+    return { success: true, redirect: "/auth/login?accountLinked=true" };
   } catch (error) {
-    console.error("Error linking account:", error);
-    return { error: "Something went wrong" };
+    console.error("Account linking error:", error);
+
+    if (error instanceof AuthError) {
+      return { error: "Authentication error: " + error.message };
+    }
+
+    return { error: "Something went wrong. Please try again." };
   }
 };

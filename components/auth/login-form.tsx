@@ -14,9 +14,15 @@ import FormfieldCustom from "../formfield-custom";
 import Link from "next/link";
 import { getCsrfToken } from "next-auth/react";
 
-const LoginForm = ({ accountLinked = false }: { accountLinked?: boolean }) => {
+const LoginForm = ({
+  accountLinked = false,
+  error: initialError,
+}: {
+  accountLinked?: boolean;
+  error?: string;
+}) => {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(initialError || "");
   const [success, setSuccess] = useState<string | null>(null);
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
 
