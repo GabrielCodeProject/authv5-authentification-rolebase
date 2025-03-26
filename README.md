@@ -38,3 +38,9 @@ https://www.youtube.com/watch?v=5a9yo09W4rQ
 
 email verification with resend
 https://www.youtube.com/watch?v=QyGJLm55EDk
+
+feature a ajouter pour creation de post pour le blog avec AI
+outil avec le ai permetant d'aider a trouver un sujet pour poster sur le blog
+le ai va
+formater le post pour que le sujet sois simple a comprendre.
+le ai va demander a l'admin qui cree le post cest connaissance sur le sujet afin de mieu generer ca reponse
